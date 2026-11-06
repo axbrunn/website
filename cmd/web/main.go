@@ -2,70 +2,79 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
-	"text/template"
+	"regexp"
 )
 
-const ADDR = ":8080"
+const ADDR = ":6767"
 
-type Page struct {
-	Title string
-	Body  []byte
+var validSlug = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+
+type application struct {
+	templates map[string]*template.Template
 }
 
-func constructFileName(name, ext string) string {
-	return name + ext
-}
-
-func (p *Page) save() error {
-	filename := constructFileName(p.Title, ".txt")
-	return os.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := constructFileName(title, ".txt")
-	body, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/view/"):]
-	p, err := loadPage(title)
-	if err != nil {
-		errorHandler(w, r, http.StatusNotFound)
-		return
+func (app *application) renderTemplate(w http.ResponseWriter, status int, tmpl string, data any) error {
+	ts, ok := app.templates[tmpl+".html"]
+	if !ok {
+		return fmt.Errorf("the template %s does not exist in the cache", tmpl)
 	}
 
-	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles("assets/html/index.html")
-	t.Execute(w, nil)
-}
-
-func errorHandler(w http.ResponseWriter, r *http.Request, status int) {
 	w.WriteHeader(status)
-	if status == http.StatusNotFound {
-		t, _ := template.ParseFiles("assets/html/notFound.html")
-		t.Execute(w, nil)
+
+	return ts.ExecuteTemplate(w, "base", data)
+}
+
+func (app *application) notFound(w http.ResponseWriter) {
+	err := app.renderTemplate(w, http.StatusNotFound, "notfound", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
+	err := app.renderTemplate(w, http.StatusOK, "home", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (app *application) fooHandler(w http.ResponseWriter, r *http.Request) {
+	err := app.renderTemplate(w, http.StatusOK, "foo", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func main() {
-	p1 := &Page{
-		Title: "test",
-		Body:  []byte("I'm a healthy Page!"),
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		log.Print(err.Error())
+		os.Exit(1)
 	}
-	p1.save()
 
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/view/", viewHandler)
+	app := &application{
+		templates: templateCache,
+	}
 
-	log.Fatal(http.ListenAndServe(ADDR, nil))
+	err = run(app)
+	if err != nil {
+		log.Printf("startup err: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run(app *application) error {
+
+	log.Printf("starting server on %s", ADDR)
+
+	err := http.ListenAndServe(ADDR, app.routes())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
