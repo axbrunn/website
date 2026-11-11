@@ -1,77 +1,76 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
-	"regexp"
 )
 
-const ADDR = ":6767"
-
-var validSlug = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+// Group a set of global varable in a struct
+var opts struct {
+	http struct {
+		port int
+	}
+	logger struct {
+		level string
+	}
+}
 
 type application struct {
+	logger    *slog.Logger
 	templates map[string]*template.Template
 }
 
-func (app *application) renderTemplate(w http.ResponseWriter, status int, tmpl string, data any) error {
-	ts, ok := app.templates[tmpl+".html"]
-	if !ok {
-		return fmt.Errorf("the template %s does not exist in the cache", tmpl)
-	}
-
-	w.WriteHeader(status)
-
-	return ts.ExecuteTemplate(w, "base", data)
-}
-
-func (app *application) notFound(w http.ResponseWriter) {
-	err := app.renderTemplate(w, http.StatusNotFound, "notfound", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func (app *application) homeHandler(w http.ResponseWriter, r *http.Request) {
-	err := app.renderTemplate(w, http.StatusOK, "home", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func (app *application) fooHandler(w http.ResponseWriter, r *http.Request) {
-	err := app.renderTemplate(w, http.StatusOK, "foo", nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+var loggerlevels = map[string]slog.Level{
+	"debug": slog.LevelDebug,
+	"info":  slog.LevelInfo,
+	"warn":  slog.LevelWarn,
+	"error": slog.LevelError,
 }
 
 func main() {
+	flag.IntVar(&opts.http.port, "http-port", 6767, "The HTTP port to run the server on")
+	flag.StringVar(&opts.logger.level, "log-level", "info", "Minimal log level (debug, info, warn, error)")
+	flag.Parse()
+
+	logLevel, ok := loggerlevels[opts.logger.level]
+	if !ok {
+		log.Fatalf("invalid log level supplied: %s", opts.logger.level)
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+
+	logger.Info("logger initialized", "level", opts.logger.level)
+
 	templateCache, err := newTemplateCache()
 	if err != nil {
-		log.Print(err.Error())
+		logger.Error(err.Error())
 		os.Exit(1)
 	}
 
 	app := &application{
+		logger:    logger,
 		templates: templateCache,
 	}
 
-	err = run(app)
+	err = run(app, opts.http.port)
 	if err != nil {
-		log.Printf("startup err: %v", err)
+		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(app *application) error {
+func run(app *application, port int) error {
 
-	log.Printf("starting server on %s", ADDR)
+	app.logger.Info("starting server", "port", port)
 
-	err := http.ListenAndServe(ADDR, app.routes())
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), app.routes())
 	if err != nil {
 		return err
 	}

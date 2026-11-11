@@ -1,27 +1,43 @@
+:root {
+	color-scheme: light dark;
+
+	--color-base: light-dark(#faf4ed, #181818);
+	--color-text: light-dark(#464261, #e0def4);
+	--color-subtle: light-dark(#797593, #908caa);
+	--color-accent: light-dark(#ea9d34, #f6c177);
+}
+
 @media (prefers-color-scheme: dark){
 	body {
-		background:#181818;
-		color: whitesmoke;
+		background: var(--color-base);
+		color: var(--color-text);
 	}
 }
 
-body{
-	margin:1em auto;
-	max-width:60em;
-	padding:0 .62em 3.24em;
-	font:1.2em/1.62 sans-serif
+body {
+	margin: 1em auto;
+	max-width: 60em;
+	padding: 0 .62em 3.24em;
+	font: 1.2em/1.62 sans-serif;
 }
 
-h1,h2,h3 {
-	line-height:1.2
+h1, h2, h3 {
+	line-height: 1.2;
+}
+
+hr {
+  border: none;
+  border-top: 1px dashed var(--color-subtle);
+  color: var(--color-subtle);
+  overflow: visible;
 }
 
 a {
-	color: darkorange;
+	color: var(--color-accent);
 }
 
-@media print{
-	body{
-		max-width:none
+@media print {
+	body {
+		max-width: none
 	}
 }
