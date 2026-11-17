@@ -6,6 +6,7 @@
 	--color-text: light-dark(#464261, #e0def4);
 	--color-subtle: light-dark(#797593, #908caa);
 	--color-accent: light-dark(#ea9d34, #f6c177);
+	--color-love: light-dark(#eb6f92, #b4637a);
 }
 
 @media (prefers-color-scheme: dark){
@@ -47,6 +48,10 @@ body {
 
 h1, h2, h3 {
 	line-height: 1.2;
+}
+
+#error-title {
+	color: var(--color-love);
 }
 
 a {

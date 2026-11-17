@@ -1,0 +1,9 @@
+{{define "title"}}{{.Status}} Error{{end}}
+
+{{define "main"}}
+    <hgroup>
+        <h1 id="error-title">{{.Status}} ERROR</h1>
+        <p>{{.Message}}</p>
+    </hgroup>
+    <a href="/">GO TO HOME</a>
+{{end}}

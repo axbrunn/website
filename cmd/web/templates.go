@@ -8,22 +8,33 @@ import (
 func newTemplateCache() (map[string]*template.Template, error) {
 	cache := map[string]*template.Template{}
 
-	pages, err := filepath.Glob("./assets/html/pages/*.html")
-	if err != nil {
-		return nil, err
+	patterns := []string{
+		"./assets/html/pages/*.html",
+		"./assets/html/pages/errors/*.html",
+	}
+
+	var pages []string
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			return nil, err
+		}
+		pages = append(pages, matches...)
 	}
 
 	for _, page := range pages {
 		name := filepath.Base(page)
-		files := []string{
-			"./assets/html/base.html",
-			"./assets/html/partials/header.html",
-			"./assets/html/partials/nav.html",
-			"./assets/html/partials/footer.html",
-			page,
+		ts, err := template.New(name).ParseFiles("./assets/html/base.html")
+		if err != nil {
+			return nil, err
 		}
 
-		ts, err := template.ParseFiles(files...)
+		ts, err = ts.ParseGlob("./assets/html/partials/*.html")
+		if err != nil {
+			return nil, err
+		}
+
+		ts, err = ts.ParseFiles(page)
 		if err != nil {
 			return nil, err
 		}

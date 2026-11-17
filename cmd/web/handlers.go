@@ -13,10 +13,18 @@ func (app *application) errorHandler(w http.ResponseWriter, r *http.Request, sta
 		Message: message,
 	}
 
-	err := app.renderTemplate(w, status, "error", ErrorData)
-	if err != nil {
-		app.logger.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
-		http.Error(w, http.StatusText(status), status)
+	switch status {
+	case http.StatusInternalServerError:
+		err := app.renderTemplate(w, status, "500", ErrorData)
+		if err != nil {
+			app.logger.Error(err.Error(), "method", r.Method, "uri", r.URL.RequestURI())
+			http.Error(w, http.StatusText(status), status)
+		}
+	default:
+		err := app.renderTemplate(w, status, "error", ErrorData)
+		if err != nil {
+			app.serverError(w, r, err)
+		}
 	}
 }
 
