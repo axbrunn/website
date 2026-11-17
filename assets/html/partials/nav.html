@@ -5,4 +5,12 @@
         <a href='/gallery'>Gallery</a> -
         <a href='/now'>Now</a> →
     </p>
+    <p>
+        <label for="lightdark">Mode:</label>
+        <select onchange="switchMode(this.value)" id="lightdark">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+        </select>
+    </p>
 {{end}}
